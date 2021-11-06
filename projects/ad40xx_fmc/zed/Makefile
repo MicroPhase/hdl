@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -8,6 +9,7 @@ PROJECT_NAME := ad40xx_fmc_zed
 M_DEPS += system_constr_adaq400x.xdc
 M_DEPS += system_constr_ad40xx.xdc
 M_DEPS += ../common/ad40xx_bd.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/zed/zed_system_constr.xdc
 M_DEPS += ../../common/zed/zed_system_bd.tcl
 M_DEPS += ../../../library/common/ad_iobuf.v

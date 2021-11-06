@@ -60,6 +60,8 @@ adi_ip_properties axi_jesd204_rx
 
 adi_ip_ttcl axi_jesd204_rx "axi_jesd204_rx_ooc.ttcl"
 
+set_property company_url {https://wiki.analog.com/resources/fpga/peripherals/jesd204/axi_jesd204_rx} [ipx::current_core]
+
 set_property PROCESSING_ORDER LATE [ipx::get_files axi_jesd204_rx_constr.xdc \
   -of_objects [ipx::get_file_groups -of_objects [ipx::current_core] \
   -filter {NAME =~ *synthesis*}]]
@@ -77,18 +79,21 @@ adi_add_bus "rx_cfg" "master" \
   { \
     { "core_cfg_lanes_disable" "lanes_disable" } \
     { "core_cfg_links_disable" "links_disable" } \
-    { "core_cfg_beats_per_multiframe" "beats_per_multiframe" } \
+    { "core_cfg_octets_per_multiframe" "octets_per_multiframe" } \
     { "core_cfg_octets_per_frame" "octets_per_frame" } \
-    { "core_cfg_lmfc_offset" "lmfc_offset" } \
-    { "core_cfg_sysref_oneshot" "sysref_oneshot" } \
-    { "core_cfg_sysref_disable" "sysref_disable" } \
-    { "core_ctrl_err_statistics_reset" "err_statistics_reset" } \
-    { "core_ctrl_err_statistics_mask" "err_statistics_mask" } \
-    { "core_cfg_buffer_early_release" "buffer_early_release" } \
-    { "core_cfg_buffer_delay" "buffer_delay" } \
     { "core_cfg_disable_char_replacement" "disable_char_replacement" } \
     { "core_cfg_disable_scrambler" "disable_scrambler" } \
     { "core_cfg_frame_align_err_threshold" "frame_align_err_threshold" } \
+    { "device_cfg_octets_per_multiframe" "device_octets_per_multiframe" } \
+    { "device_cfg_octets_per_frame" "device_octets_per_frame" } \
+    { "device_cfg_beats_per_multiframe" "device_beats_per_multiframe" } \
+    { "device_cfg_lmfc_offset" "device_lmfc_offset" } \
+    { "device_cfg_sysref_oneshot" "device_sysref_oneshot" } \
+    { "device_cfg_sysref_disable" "device_sysref_disable" } \
+    { "device_cfg_buffer_early_release" "device_buffer_early_release" } \
+    { "device_cfg_buffer_delay" "device_buffer_delay" } \
+    { "core_ctrl_err_statistics_reset" "err_statistics_reset" } \
+    { "core_ctrl_err_statistics_mask" "err_statistics_mask" } \
   }
 
 adi_add_bus "rx_ilas_config" "slave" \
@@ -104,8 +109,8 @@ adi_add_bus "rx_event" "slave" \
   "analog.com:interface:jesd204_rx_event_rtl:1.0" \
   "analog.com:interface:jesd204_rx_event:1.0" \
   { \
-    { "core_event_sysref_alignment_error" "sysref_alignment_error" } \
-    { "core_event_sysref_edge" "sysref_edge" } \
+    { "device_event_sysref_alignment_error" "sysref_alignment_error" } \
+    { "device_event_sysref_edge" "sysref_edge" } \
     { "core_event_frame_alignment_error" "frame_alignment_error" } \
     { "core_event_unexpected_lane_state_error" "unexpected_lane_state_error" } \
   }
@@ -121,6 +126,9 @@ adi_add_bus "rx_status" "slave" \
     { "core_status_lane_latency" "lane_latency" } \
     { "core_status_lane_frame_align_err_cnt" "lane_frame_align_err_cnt" } \
     { "core_status_err_statistics_cnt" "err_statistics_cnt" } \
+    { "status_synth_params0" "synth_params0" } \
+    { "status_synth_params1" "synth_params1" } \
+    { "status_synth_params2" "synth_params2" } \
   }
 
 ipx::infer_bus_interface irq xilinx.com:signal:interrupt_rtl:1.0 [ipx::current_core]

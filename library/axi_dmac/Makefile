@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -47,8 +48,8 @@ XILINX_DEPS += ../interfaces/fifo_wr_rtl.xml
 XILINX_LIB_DEPS += util_axis_fifo
 XILINX_LIB_DEPS += util_cdc
 
-INTEL_DEPS += ../util_axis_fifo/address_sync.v
 INTEL_DEPS += ../util_axis_fifo/util_axis_fifo.v
+INTEL_DEPS += ../util_axis_fifo/util_axis_fifo_address_generator.v
 INTEL_DEPS += ../util_cdc/sync_bits.v
 INTEL_DEPS += ../util_cdc/sync_event.v
 INTEL_DEPS += axi_dmac_constr.sdc

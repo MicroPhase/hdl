@@ -16,6 +16,11 @@ adi_if_ports input     1  pll_locked
 adi_if_ports output    1  rst
 adi_if_ports output    1  user_ready
 adi_if_ports input     1  rst_done
+adi_if_ports output    4  prbssel
+adi_if_ports output    1  prbsforceerr
+adi_if_ports output    1  prbscntreset
+adi_if_ports input     1  prbserr
+adi_if_ports input     1  prbslocked
 adi_if_ports output    1  lpm_dfe_n
 adi_if_ports output    3  rate
 adi_if_ports output    2  sys_clk_sel
@@ -29,6 +34,8 @@ adi_if_ports output    1  wr
 adi_if_ports output   16  wdata
 adi_if_ports input    16  rdata
 adi_if_ports input     1  ready
+adi_if_ports output    2  bufstatus
+adi_if_ports output    1  bufstatus_rst
 
 adi_if_define if_gt_qpll
 adi_if_ports output    1  qpll_rst            reset

@@ -1,11 +1,13 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
 PROJECT_NAME := fmcomms2_kcu105
 
 M_DEPS += ../common/fmcomms2_bd.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/kcu105/kcu105_system_mig.tcl
 M_DEPS += ../../common/kcu105/kcu105_system_lutram_constr.xdc
 M_DEPS += ../../common/kcu105/kcu105_system_constr.xdc

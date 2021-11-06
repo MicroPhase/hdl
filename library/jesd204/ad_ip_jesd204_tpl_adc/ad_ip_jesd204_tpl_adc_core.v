@@ -29,10 +29,12 @@ module ad_ip_jesd204_tpl_adc_core #(
   parameter SAMPLES_PER_FRAME = 1,
   parameter CONVERTER_RESOLUTION = 14,
   parameter BITS_PER_SAMPLE = 16,
+  parameter DMA_BITS_PER_SAMPLE = 16,
   parameter OCTETS_PER_BEAT = 4,
+  parameter EN_FRAME_ALIGN = 0,
   parameter DATA_PATH_WIDTH = 1,
   parameter LINK_DATA_WIDTH = NUM_LANES * OCTETS_PER_BEAT * 8,
-  parameter DMA_DATA_WIDTH = DATA_PATH_WIDTH * BITS_PER_SAMPLE * NUM_CHANNELS,
+  parameter DMA_DATA_WIDTH = DATA_PATH_WIDTH * DMA_BITS_PER_SAMPLE * NUM_CHANNELS,
   parameter TWOS_COMPLEMENT = 1
 ) (
   input clk,
@@ -61,7 +63,7 @@ module ad_ip_jesd204_tpl_adc_core #(
   // Raw and formatted channel data widths
   localparam CDW_RAW = CONVERTER_RESOLUTION * DATA_PATH_WIDTH;
   localparam ADC_DATA_WIDTH = CDW_RAW * NUM_CHANNELS;
-  localparam CDW_FMT = BITS_PER_SAMPLE * DATA_PATH_WIDTH;
+  localparam CDW_FMT = DMA_BITS_PER_SAMPLE * DATA_PATH_WIDTH;
 
   wire [ADC_DATA_WIDTH-1:0] raw_data_s;
 
@@ -93,6 +95,7 @@ module ad_ip_jesd204_tpl_adc_core #(
     .CONVERTER_RESOLUTION  (CONVERTER_RESOLUTION),
     .SAMPLES_PER_FRAME (SAMPLES_PER_FRAME),
     .OCTETS_PER_BEAT (OCTETS_PER_BEAT),
+    .EN_FRAME_ALIGN (EN_FRAME_ALIGN),
     .LINK_DATA_WIDTH (LINK_DATA_WIDTH),
     .ADC_DATA_WIDTH (ADC_DATA_WIDTH)
   ) i_deframer (
@@ -109,7 +112,7 @@ module ad_ip_jesd204_tpl_adc_core #(
       .DATA_PATH_WIDTH (DATA_PATH_WIDTH),
       .CONVERTER_RESOLUTION (CONVERTER_RESOLUTION),
       .TWOS_COMPLEMENT (TWOS_COMPLEMENT),
-      .BITS_PER_SAMPLE (BITS_PER_SAMPLE)
+      .BITS_PER_SAMPLE (DMA_BITS_PER_SAMPLE)
     ) i_channel (
       .clk (clk),
 

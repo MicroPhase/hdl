@@ -64,6 +64,8 @@ module adrv9001_rx #(
   output      [7:0]       adc_data_strobe,
   output                  adc_valid,
 
+  output     [31:0]       adc_clk_ratio,
+
   // delay interface (for IDELAY macros)
   input                             up_clk,
   input   [NUM_LANES-1:0]           up_adc_dld,
@@ -197,9 +199,27 @@ module adrv9001_rx #(
       .CLR (mssi_sync),
       .CE (1'b1),
       .I (clk_in_s),
-      .O (adc_clk_div));
+      .O (adc_clk_div_s));
+    /*
+    BUFG I_bufg (
+      .I (adc_clk_div_s),
+      .O (adc_clk_div)
+    );
+    */
+    assign adc_clk_div = adc_clk_div_s;
 
-    assign ssi_rst = mssi_sync;
+    xpm_cdc_async_rst
+    # (
+       .DEST_SYNC_FF    (10), // DECIMAL; range: 2-10
+       .INIT_SYNC_FF    ( 0), // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
+       .RST_ACTIVE_HIGH ( 1)  // DECIMAL; 0=active low reset, 1=active high reset
+      )
+    rst_syncro
+    (
+     .src_arst (mssi_sync  ),
+     .dest_clk (adc_clk_div),
+     .dest_arst(ssi_rst    )
+    );
 
   end else begin
     wire adc_clk_in;
@@ -208,33 +228,21 @@ module adrv9001_rx #(
     reg mssi_sync_2d = 1'b0;
     reg mssi_sync_3d = 1'b0;
     reg mssi_sync_edge = 1'b0;
-    reg mssi_sync_out_neg = 1'b0;
     always @(posedge adc_clk_in) begin
       mssi_sync_d <= mssi_sync;
       mssi_sync_2d <= mssi_sync_d;
       mssi_sync_3d <= mssi_sync_2d;
       mssi_sync_edge <= mssi_sync_2d & ~mssi_sync_3d;
     end
-    always @(negedge adc_clk_in) begin
-      mssi_sync_out_neg <= mssi_sync_edge;
-    end
 
-    assign ssi_sync_out = mssi_sync_out_neg;
+    assign ssi_sync_out = mssi_sync_edge;
 
     reg ssi_rst_pos;
     always @(posedge adc_clk_in) begin
       ssi_rst_pos <= ssi_sync_in;
     end
 
-    BUFGCE #(
-       .CE_TYPE ("SYNC"),
-       .IS_CE_INVERTED (1'b0),
-       .IS_I_INVERTED (1'b0)
-    ) i_clk_buf (
-       .O (adc_clk_in),
-       .CE (1'b1),
-       .I (clk_in_s)
-    );
+    assign adc_clk_in = clk_in_s;
 
     BUFGCE #(
        .CE_TYPE ("SYNC"),
@@ -265,6 +273,7 @@ module adrv9001_rx #(
   endgenerate
 
   assign adc_clk = adc_clk_in_fast;
-  assign adc_valid = 1'b1;
+  assign adc_valid = ~adc_rst;
+  assign adc_clk_ratio = 4;
 
 endmodule

@@ -38,6 +38,10 @@
 module axi_adrv9001 #(
   parameter ID = 0,
   parameter CMOS_LVDS_N = 0,
+  parameter TDD_DISABLE = 0,
+  parameter DDS_DISABLE = 0,
+  parameter INDEPENDENT_1R1T_SUPPORT = 1,
+  parameter COMMON_2R2T_SUPPORT = 1,
   parameter IO_DELAY_GROUP = "dev_if_delay_group",
   parameter FPGA_TECHNOLOGY = 0,
   parameter FPGA_FAMILY = 0,
@@ -89,6 +93,11 @@ module axi_adrv9001 #(
   output                  tx2_qdata_out_p_qdata3,
   output                  tx2_strobe_out_n_NC,
   output                  tx2_strobe_out_p_strobe_out,
+
+  output                  rx1_enable,
+  output                  rx2_enable,
+  output                  tx1_enable,
+  output                  tx2_enable,
 
   input                   delay_clk,
 
@@ -147,6 +156,15 @@ module axi_adrv9001 #(
   input       [15:0]      dac_2_data_q0,
   input                   dac_2_dunf,
 
+  // TDD interface
+  input                   tdd_sync,
+  output                  tdd_sync_cntr,
+
+  input                   gpio_rx1_enable_in,
+  input                   gpio_rx2_enable_in,
+  input                   gpio_tx1_enable_in,
+  input                   gpio_tx2_enable_in,
+
   // axi interface
   input                   s_axi_aclk,
   input                   s_axi_aresetn,
@@ -195,22 +213,30 @@ module axi_adrv9001 #(
   wire            rx1_data_valid;
   wire            rx1_single_lane;
   wire            rx1_sdr_ddr_n;
+  wire            rx1_symb_op;
+  wire            rx1_symb_8_16b;
   wire    [15:0]  rx2_data_i;
   wire    [15:0]  rx2_data_q;
   wire            rx2_data_valid;
   wire            rx2_single_lane;
   wire            rx2_sdr_ddr_n;
+  wire            rx2_symb_op;
+  wire            rx2_symb_8_16b;
 
   wire    [15:0]  tx1_data_i;
   wire    [15:0]  tx1_data_q;
   wire            tx1_data_valid;
   wire            tx1_single_lane;
   wire            tx1_sdr_ddr_n;
+  wire            tx1_symb_op;
+  wire            tx1_symb_8_16b;
   wire    [15:0]  tx2_data_i;
   wire    [15:0]  tx2_data_q;
   wire            tx2_data_valid;
   wire            tx2_single_lane;
   wire            tx2_sdr_ddr_n;
+  wire            tx2_symb_op;
+  wire            tx2_symb_8_16b;
 
   wire            adc_1_valid;
   wire            adc_2_valid;
@@ -235,6 +261,8 @@ module axi_adrv9001 #(
   wire                              delay_rx2_rst;
   wire                              delay_rx1_locked;
   wire                              delay_rx2_locked;
+  wire                       [31:0] adc_clk_ratio;
+  wire                       [31:0] dac_clk_ratio;
 
   axi_adrv9001_if #(
     .CMOS_LVDS_N (CMOS_LVDS_N),
@@ -316,6 +344,7 @@ module axi_adrv9001 #(
     //
 
     // ADC interface
+    .adc_clk_ratio (adc_clk_ratio),
     .rx1_clk (adc_1_clk),
     .rx1_rst (adc_1_rst),
     .rx1_data_valid (rx1_data_valid),
@@ -324,6 +353,8 @@ module axi_adrv9001 #(
 
     .rx1_single_lane (rx1_single_lane),
     .rx1_sdr_ddr_n (rx1_sdr_ddr_n),
+    .rx1_symb_op (rx1_symb_op),
+    .rx1_symb_8_16b (rx1_symb_8_16b),
 
     .rx2_clk (adc_2_clk),
     .rx2_rst (adc_2_rst),
@@ -333,8 +364,11 @@ module axi_adrv9001 #(
 
     .rx2_single_lane (rx2_single_lane),
     .rx2_sdr_ddr_n (rx2_sdr_ddr_n),
+    .rx2_symb_op (rx2_symb_op),
+    .rx2_symb_8_16b (rx2_symb_8_16b),
 
     // DAC interface
+    .dac_clk_ratio (dac_clk_ratio),
     .tx1_clk (dac_1_clk),
     .tx1_rst (dac_1_rst),
     .tx1_data_valid (tx1_data_valid),
@@ -343,6 +377,8 @@ module axi_adrv9001 #(
 
     .tx1_single_lane (tx1_single_lane),
     .tx1_sdr_ddr_n (tx1_sdr_ddr_n),
+    .tx1_symb_op (tx1_symb_op),
+    .tx1_symb_8_16b (tx1_symb_8_16b),
 
     .tx2_clk (dac_2_clk),
     .tx2_rst (dac_2_rst),
@@ -351,7 +387,9 @@ module axi_adrv9001 #(
     .tx2_data_q (tx2_data_q),
 
     .tx2_single_lane (tx2_single_lane),
-    .tx2_sdr_ddr_n (tx2_sdr_ddr_n)
+    .tx2_sdr_ddr_n (tx2_sdr_ddr_n),
+    .tx2_symb_op (tx2_symb_op),
+    .tx2_symb_8_16b (tx2_symb_8_16b)
   );
 
   // common processor control
@@ -359,7 +397,12 @@ module axi_adrv9001 #(
     .ID (ID),
     .NUM_LANES (NUM_LANES),
     .CMOS_LVDS_N (CMOS_LVDS_N),
+    .USE_RX_CLK_FOR_TX (USE_RX_CLK_FOR_TX),
     .DRP_WIDTH (DRP_WIDTH),
+    .TDD_DISABLE (TDD_DISABLE),
+    .DDS_DISABLE (DDS_DISABLE),
+    .INDEPENDENT_1R1T_SUPPORT (INDEPENDENT_1R1T_SUPPORT),
+    .COMMON_2R2T_SUPPORT (COMMON_2R2T_SUPPORT),
     .FPGA_TECHNOLOGY (FPGA_TECHNOLOGY),
     .FPGA_FAMILY (FPGA_FAMILY),
     .SPEED_GRADE (SPEED_GRADE),
@@ -374,6 +417,8 @@ module axi_adrv9001 #(
 
     .rx1_single_lane (rx1_single_lane),
     .rx1_sdr_ddr_n (rx1_sdr_ddr_n),
+    .rx1_symb_op (rx1_symb_op),
+    .rx1_symb_8_16b (rx1_symb_8_16b),
 
     .rx2_clk (adc_2_clk),
     .rx2_rst (adc_2_rst),
@@ -383,6 +428,10 @@ module axi_adrv9001 #(
 
     .rx2_single_lane (rx2_single_lane),
     .rx2_sdr_ddr_n (rx2_sdr_ddr_n),
+    .rx2_symb_op (rx2_symb_op),
+    .rx2_symb_8_16b (rx2_symb_8_16b),
+
+    .adc_clk_ratio (adc_clk_ratio),
 
     //DAC interface
     .tx1_clk (dac_1_clk),
@@ -393,6 +442,8 @@ module axi_adrv9001 #(
 
     .tx1_single_lane (tx1_single_lane),
     .tx1_sdr_ddr_n (tx1_sdr_ddr_n),
+    .tx1_symb_op (tx1_symb_op),
+    .tx1_symb_8_16b (tx1_symb_8_16b),
 
     .tx2_clk (dac_2_clk),
     .tx2_rst (dac_2_rst),
@@ -402,7 +453,10 @@ module axi_adrv9001 #(
 
     .tx2_single_lane (tx2_single_lane),
     .tx2_sdr_ddr_n (tx2_sdr_ddr_n),
+    .tx2_symb_op (tx2_symb_op),
+    .tx2_symb_8_16b (tx2_symb_8_16b),
 
+    .dac_clk_ratio (dac_clk_ratio),
     //
     // User layer interface
     //
@@ -456,6 +510,16 @@ module axi_adrv9001 #(
     .delay_rx2_rst (delay_rx2_rst),
     .delay_rx2_locked (delay_rx2_locked),
 
+    // TDD interface
+    .tdd_sync (tdd_sync),
+    .tdd_sync_cntr (tdd_sync_cntr),
+    .tdd_rx1_rf_en (tdd_rx1_rf_en),
+    .tdd_tx1_rf_en (tdd_tx1_rf_en),
+    .tdd_if1_mode (tdd_if1_mode),
+    .tdd_rx2_rf_en (tdd_rx2_rf_en),
+    .tdd_tx2_rf_en (tdd_tx2_rf_en),
+    .tdd_if2_mode (tdd_if2_mode),
+
     .up_rstn (up_rstn),
     .up_clk (up_clk),
     .up_wreq (up_wreq_s),
@@ -481,6 +545,11 @@ module axi_adrv9001 #(
   assign dac_1_valid_q1 = dac_1_valid;
   assign dac_2_valid_i0 = dac_2_valid;
   assign dac_2_valid_q0 = dac_2_valid;
+
+  assign rx1_enable = tdd_if1_mode ? tdd_rx1_rf_en : gpio_rx1_enable_in;
+  assign rx2_enable = tdd_if2_mode ? tdd_rx2_rf_en : gpio_rx2_enable_in;
+  assign tx1_enable = tdd_if1_mode ? tdd_tx1_rf_en : gpio_tx1_enable_in;
+  assign tx2_enable = tdd_if2_mode ? tdd_tx2_rf_en : gpio_tx2_enable_in;
 
   // up bus interface
   up_axi #(

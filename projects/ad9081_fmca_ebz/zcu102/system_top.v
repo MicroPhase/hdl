@@ -40,7 +40,8 @@ module system_top  #(
     parameter TX_JESD_L = 8,
     parameter TX_NUM_LINKS = 1,
     parameter RX_JESD_L = 8,
-    parameter RX_NUM_LINKS = 1
+    parameter RX_NUM_LINKS = 1,
+    parameter SHARED_DEVCLK = 0
   ) (
 
   input  [12:0] gpio_bd_i,
@@ -109,6 +110,7 @@ module system_top  #(
   wire            clkin6;
   wire            clkin10;
   wire            tx_device_clk;
+  wire            rx_device_clk_internal;
   wire            rx_device_clk;
 
   assign iic_rstn = 1'b1;
@@ -161,8 +163,11 @@ module system_top  #(
 
   BUFG i_rx_device_clk (
     .I (clkin10),
-    .O (rx_device_clk)
+    .O (rx_device_clk_internal)
   );
+
+  assign rx_device_clk = SHARED_DEVCLK ? tx_device_clk : rx_device_clk_internal;
+
   // spi
 
   assign spi0_csb   = spi0_csn[0];
@@ -203,7 +208,6 @@ module system_top  #(
   assign rxen[1]          = gpio_o[57];
   assign txen[0]          = gpio_o[58];
   assign txen[1]          = gpio_o[59];
-  assign dac_fifo_bypass  = gpio_o[60];
 
   /* Board GPIOS. Buttons, LEDs, etc... */
   assign gpio_i[20: 8] = gpio_bd_i;
@@ -266,12 +270,11 @@ module system_top  #(
     .rx_sync_0 (rx_syncout),
     .tx_sync_0 (tx_syncin),
     .rx_sysref_0 (sysref),
-    .tx_sysref_0 (sysref),
-    .dac_fifo_bypass (dac_fifo_bypass)
+    .tx_sysref_0 (sysref)
   );
 
-  assign rx_data_p_loc[TX_JESD_L*TX_NUM_LINKS-1:0] = rx_data_p[TX_JESD_L*TX_NUM_LINKS-1:0];
-  assign rx_data_n_loc[TX_JESD_L*TX_NUM_LINKS-1:0] = rx_data_n[TX_JESD_L*TX_NUM_LINKS-1:0];
+  assign rx_data_p_loc[RX_JESD_L*RX_NUM_LINKS-1:0] = rx_data_p[RX_JESD_L*RX_NUM_LINKS-1:0];
+  assign rx_data_n_loc[RX_JESD_L*RX_NUM_LINKS-1:0] = rx_data_n[RX_JESD_L*RX_NUM_LINKS-1:0];
 
   assign tx_data_p[TX_JESD_L*TX_NUM_LINKS-1:0] = tx_data_p_loc[TX_JESD_L*TX_NUM_LINKS-1:0];
   assign tx_data_n[TX_JESD_L*TX_NUM_LINKS-1:0] = tx_data_n_loc[TX_JESD_L*TX_NUM_LINKS-1:0];

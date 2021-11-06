@@ -50,11 +50,10 @@ module jesd204_up_common # (
   parameter ID = 0,
   parameter NUM_LANES = 1,
   parameter NUM_LINKS = 1,
-  parameter DATA_PATH_WIDTH = 2,
-  parameter MAX_OCTETS_PER_FRAME = 256,
+  parameter DATA_PATH_WIDTH_LOG2 = 2,
   parameter NUM_IRQS = 1,
   parameter EXTRA_CFG_WIDTH = 1,
-  parameter LINK_MODE = 1, // 2 - 64B/66B;  1 - 8B/10B
+  parameter DEV_EXTRA_CFG_WIDTH = 1,
   parameter ENABLE_LINK_STATS = 0
 ) (
   input up_clk,
@@ -68,6 +67,9 @@ module jesd204_up_common # (
   input core_reset_ext,
   output core_reset,
 
+  input device_clk,
+  output device_reset,
+
   input [11:0] up_raddr,
   output reg [31:0] up_rdata,
 
@@ -76,27 +78,37 @@ module jesd204_up_common # (
   input [31:0] up_wdata,
 
   input [EXTRA_CFG_WIDTH-1:0] up_extra_cfg,
+  input [DEV_EXTRA_CFG_WIDTH-1:0] up_dev_extra_cfg,
 
   input [NUM_IRQS-1:0] up_irq_trigger,
   output reg irq,
 
   output up_cfg_is_writeable,
 
-  output reg [NUM_LANES-1:0] core_cfg_lanes_disable,
-  output reg [NUM_LINKS-1:0] core_cfg_links_disable,
-  output reg [7:0] core_cfg_beats_per_multiframe,
-  output reg [7:0] core_cfg_octets_per_frame,
-  output reg core_cfg_disable_scrambler,
-  output reg core_cfg_disable_char_replacement,
-  output reg [EXTRA_CFG_WIDTH-1:0] core_extra_cfg
-);
+  output reg [NUM_LANES-1:0] core_cfg_lanes_disable = {NUM_LANES{1'b0}},
+  output reg [NUM_LINKS-1:0] core_cfg_links_disable = {NUM_LINKS{1'b0}},
+  output reg [9:0] core_cfg_octets_per_multiframe = 'h00,
+  output reg [7:0] core_cfg_octets_per_frame = 'h00,
+  output reg core_cfg_disable_scrambler = 'h00,
+  output reg core_cfg_disable_char_replacement = 'h00,
+  output reg [EXTRA_CFG_WIDTH-1:0] core_extra_cfg = 'h00,
 
-localparam MAX_BEATS_PER_MULTIFRAME = (MAX_OCTETS_PER_FRAME * 32) / DATA_PATH_WIDTH;
+  output reg [DEV_EXTRA_CFG_WIDTH-1:0] device_extra_cfg = 'h00,
+
+  output reg [9:0] device_cfg_octets_per_multiframe = 'h00,
+  output reg [7:0] device_cfg_octets_per_frame = 'h00,
+  output reg [7:0] device_cfg_beats_per_multiframe = 'h00,
+
+  input [31:0] status_synth_params0,
+  input [31:0] status_synth_params1,
+  input [31:0] status_synth_params2
+);
 
 reg [31:0] up_scratch = 32'h00000000;
 
 reg [7:0] up_cfg_octets_per_frame = 'h00;
-reg [9-DATA_PATH_WIDTH:0] up_cfg_beats_per_multiframe = 'h00;
+reg [9:0] up_cfg_octets_per_multiframe = {DATA_PATH_WIDTH_LOG2{1'b1}};
+reg [7:0] up_cfg_beats_per_multiframe = 'h00;
 reg [NUM_LANES-1:0] up_cfg_lanes_disable = {NUM_LANES{1'b0}};
 reg [NUM_LINKS-1:0] up_cfg_links_disable = {NUM_LINKS{1'b0}};
 reg up_cfg_disable_char_replacement = 1'b0;
@@ -109,6 +121,9 @@ assign up_reset = up_reset_vector[0];
 /* Reset signal generation for the JESD core */
 reg [4:0] core_reset_vector = 5'b11111;
 assign core_reset = core_reset_vector[0];
+
+reg [4:0] device_reset_vector = 5'b11111;
+assign device_reset = device_reset_vector[0];
 
 /* Transfer the reset signal back to the up domain, used to keep the
  * synchronizers in reset until the core is ready. This is done in order to
@@ -128,6 +143,9 @@ assign up_core_reset_ext = up_core_reset_ext_synchronizer_vector[0];
 /* Transfer two cycles before the core comes out of reset */
 wire core_cfg_transfer_en;
 assign core_cfg_transfer_en = core_reset_vector[2] ^ core_reset_vector[1];
+
+wire device_cfg_transfer_en;
+assign device_cfg_transfer_en = device_reset_vector[2] ^ device_reset_vector[1];
 
 reg up_reset_core = 1'b1;
 
@@ -151,6 +169,14 @@ always @(posedge core_clk or posedge core_reset_all) begin
   end
 end
 
+always @(posedge device_clk or posedge core_reset_all) begin
+  if (core_reset_all == 1'b1) begin
+    device_reset_vector <= 5'b11111;
+  end else begin
+    device_reset_vector <= {1'b0,device_reset_vector[4:1]};
+  end
+end
+
 always @(posedge up_clk or posedge core_reset) begin
   if (core_reset == 1'b1) begin
     up_reset_synchronizer_vector <= 2'b11;
@@ -169,13 +195,22 @@ end
 
 always @(posedge core_clk) begin
   if (core_cfg_transfer_en == 1'b1) begin
-    core_cfg_beats_per_multiframe <= up_cfg_beats_per_multiframe;
+    core_cfg_octets_per_multiframe <= up_cfg_octets_per_multiframe;
     core_cfg_octets_per_frame <= up_cfg_octets_per_frame;
     core_cfg_lanes_disable <= up_cfg_lanes_disable;
     core_cfg_links_disable <= up_cfg_links_disable;
     core_cfg_disable_scrambler <= up_cfg_disable_scrambler;
     core_cfg_disable_char_replacement <= up_cfg_disable_char_replacement;
     core_extra_cfg <= up_extra_cfg;
+  end
+end
+
+always @(posedge device_clk) begin
+  if (device_cfg_transfer_en == 1'b1) begin
+    device_cfg_octets_per_multiframe <= up_cfg_octets_per_multiframe;
+    device_cfg_octets_per_frame <= up_cfg_octets_per_frame;
+    device_cfg_beats_per_multiframe <= up_cfg_beats_per_multiframe;
+    device_extra_cfg <= up_dev_extra_cfg;
   end
 end
 
@@ -253,6 +288,7 @@ end
 endgenerate
 
 wire [20:0] clk_mon_count;
+wire [20:0] device_clk_mon_count;
 
 always @(*) begin
   case (up_raddr)
@@ -263,9 +299,9 @@ always @(*) begin
   12'h003: up_rdata = PCORE_MAGIC;
 
   /* Core configuration */
-  12'h004: up_rdata = NUM_LANES;
-  12'h005: up_rdata = DATA_PATH_WIDTH;
-  12'h006: up_rdata = {22'b0,LINK_MODE[1:0], NUM_LINKS[7:0]};
+  12'h004: up_rdata = status_synth_params0;
+  12'h005: up_rdata = status_synth_params1;
+  12'h006: up_rdata = status_synth_params2;
   /* 0x07-0x0f reserved for future use */
   /* 0x10-0x1f reserved for core specific HDL configuration information */
 
@@ -279,7 +315,8 @@ always @(*) begin
   12'h030: up_rdata = up_reset_core;
   12'h031: up_rdata = {up_core_reset_ext, up_reset_synchronizer}; /* core ready */
   12'h032: up_rdata = {11'h00, clk_mon_count}; /* Make it 16.16 */
-  /* 0x32-0x34 reserver for future use */
+  12'h033: up_rdata = {11'h00, device_clk_mon_count}; /* Make it 16.16 */
+  /* 0x34-0x34 reserver for future use */
 
   12'h080: up_rdata = up_cfg_lanes_disable;
   /* 0x82-0x83 reserved for future lane disable bits (max 128 lanes) */
@@ -287,7 +324,7 @@ always @(*) begin
     /* 24-31 */ 8'h00, /* Reserved for future extensions of octets_per_frame */
     /* 16-23 */ up_cfg_octets_per_frame,
     /* 10-15 */ 6'b000000, /* Reserved for future extensions of beats_per_multiframe */
-    /* 00-09 */ up_cfg_beats_per_multiframe,{DATA_PATH_WIDTH{1'b1}}
+    /* 00-09 */ up_cfg_octets_per_multiframe
   };
   12'h85: up_rdata = {
     /* 02-31 */ 30'h00, /* Reserved for future additions */
@@ -295,7 +332,8 @@ always @(*) begin
     /*    00 */ up_cfg_disable_scrambler /* Disable scrambler */
   };
   12'h086: up_rdata = up_cfg_links_disable;
-  /* 0x87-0x8f reserved for future use */
+  12'h087: up_rdata = up_cfg_beats_per_multiframe;
+  /* 0x88-0x8f reserved for future use */
 
   /* 0x90-0x9f reserved for core specific configuration options */
 
@@ -327,9 +365,10 @@ always @(posedge up_clk) begin
     up_reset_core <= 1'b1;
 
     up_cfg_octets_per_frame <= 'h00;
-    up_cfg_beats_per_multiframe <= 'h00;
+    up_cfg_octets_per_multiframe <= {DATA_PATH_WIDTH_LOG2{1'b1}};
     up_cfg_lanes_disable <= {NUM_LANES{1'b0}};
     up_cfg_links_disable <= {NUM_LINKS{1'b0}};
+    up_cfg_beats_per_multiframe <= 'h00;
 
     up_cfg_disable_char_replacement <= 1'b0;
     up_cfg_disable_scrambler <= 1'b0;
@@ -358,7 +397,8 @@ always @(posedge up_clk) begin
       end
       12'h084: begin
         up_cfg_octets_per_frame <= up_wdata[23:16];
-        up_cfg_beats_per_multiframe <= up_wdata[9:DATA_PATH_WIDTH];
+        up_cfg_octets_per_multiframe <= {up_wdata[9:DATA_PATH_WIDTH_LOG2],
+                                        {DATA_PATH_WIDTH_LOG2{1'b1}}};
       end
       12'h085: begin
         up_cfg_disable_char_replacement <= up_wdata[1];
@@ -366,6 +406,9 @@ always @(posedge up_clk) begin
       end
       12'h086: begin
         up_cfg_links_disable <= up_wdata[NUM_LINKS-1:0];
+      end
+      12'h087: begin
+        up_cfg_beats_per_multiframe <= up_wdata[7:0];
       end
       endcase
     end
@@ -380,6 +423,16 @@ up_clock_mon #(
   .up_d_count(clk_mon_count),
   .d_rst(1'b0),
   .d_clk(core_clk)
+);
+
+up_clock_mon #(
+  .TOTAL_WIDTH(21)
+) i_dev_clock_mon (
+  .up_rstn(~up_reset),
+  .up_clk(up_clk),
+  .up_d_count(device_clk_mon_count),
+  .d_rst(1'b0),
+  .d_clk(device_clk)
 );
 
 endmodule

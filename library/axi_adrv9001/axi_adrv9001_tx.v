@@ -37,7 +37,9 @@
 
 module axi_adrv9001_tx #(
   parameter   ID = 0,
+  parameter   ENABLED = 1,
   parameter   CMOS_LVDS_N = 0,
+  parameter   USE_RX_CLK_FOR_TX = 0,
   parameter   COMMON_BASE_ADDR = 'h10,
   parameter   CHANNEL_BASE_ADDR = 'h11,
   parameter   MODE_R1 = 1,
@@ -65,7 +67,13 @@ module axi_adrv9001_tx #(
 
   output                  dac_single_lane,
   output                  dac_sdr_ddr_n,
-  output                  dac_r1_mode,
+  output                  dac_symb_op,
+  output                  dac_symb_8_16b,
+  output                  up_dac_r1_mode,
+
+  input                   tdd_tx_valid,
+
+  input       [ 31:0]     dac_clk_ratio,
 
   // master/slave
   input                   dac_sync_in,
@@ -98,10 +106,40 @@ module axi_adrv9001_tx #(
   output  reg [ 31:0]     up_rdata,
   output  reg             up_rack
 );
+generate
+if (ENABLED == 0) begin : core_disabled
+
+  assign dac_rst = 1'b0;
+  assign dac_data_valid_A = 1'b0;
+  assign dac_data_i_A = 16'b0;
+  assign dac_data_q_A = 16'b0;
+  assign dac_data_valid_B = 1'b0;
+  assign dac_data_i_B = 16'b0;
+  assign dac_data_q_B = 16'b0;
+  assign dac_single_lane = 1'b0;
+  assign dac_sdr_ddr_n = 1'b0;
+  assign dac_symb_op = 1'b0;
+  assign dac_symb_8_16b = 1'b0;
+  assign up_dac_r1_mode = 1'b0;
+  assign dac_sync_out = 1'b0;
+  assign dac_valid = 1'b0;
+  assign dac_enable_i0 = 1'b0;
+  assign dac_enable_q0 = 1'b0;
+  assign dac_enable_i1 = 1'b0;
+  assign dac_enable_q1 = 1'b0;
+
+  always @(*) begin
+    up_wack = 1'b0;
+    up_rdata = 32'b0;
+    up_rack = 1'b0;
+  end
+
+end else begin : core_enabled
 
   // configuration settings
 
-  localparam  CONFIG =  (CMOS_LVDS_N * 128) +
+  localparam  CONFIG =  (USE_RX_CLK_FOR_TX * 1024) +
+                        (CMOS_LVDS_N * 128) +
                         (MODE_R1 * 16) +
                         (DDS_DISABLE * 64) +
                         (IQCORRECTION_DISABLE * 1);
@@ -157,7 +195,7 @@ module axi_adrv9001_tx #(
     if (dac_rst == 1'b1) begin
       dac_valid_int <= 1'b0;
     end else begin
-      dac_valid_int <= (dac_rate_cnt == 16'd0) ? 1'b1 : 1'b0;
+      dac_valid_int <= (dac_rate_cnt == 16'd0) ? tdd_tx_valid : 1'b0;
     end
   end
 
@@ -297,7 +335,7 @@ module axi_adrv9001_tx #(
     .dac_clk (dac_clk),
     .dac_rst (dac_rst),
     .dac_data_in_req (),
-    .dac_data_in (dac_data_q0),
+    .dac_data_in (dac_data_q1),
     .dac_data_out_req (dac_data_valid_B),
     .dac_data_out (dac_data_q_B[15:0]),
     .dac_data_iq_in (dac_data_iq_i1_s),
@@ -336,17 +374,20 @@ module axi_adrv9001_tx #(
     .dac_rst (dac_rst),
     .dac_num_lanes (dac_num_lanes),
     .dac_sdr_ddr_n (dac_sdr_ddr_n),
+    .dac_symb_op (dac_symb_op),
+    .dac_symb_8_16b (dac_symb_8_16b),
     .dac_sync (dac_sync_out),
     .dac_frame (),
     .dac_clksel (),
     .dac_par_type (),
     .dac_par_enb (),
-    .dac_r1_mode (dac_r1_mode),
+    .dac_r1_mode (),
+    .up_dac_r1_mode (up_dac_r1_mode),
     .dac_datafmt (dac_dds_format_s),
     .dac_datarate (dac_datarate_s),
     .dac_status (1'b1),
     .dac_status_unf (dac_dunf),
-    .dac_clk_ratio (32'd2),
+    .dac_clk_ratio (dac_clk_ratio),
     .up_dac_ce (),
     .up_pps_rcounter(32'h0),
     .up_pps_status(1'b0),
@@ -374,6 +415,9 @@ module axi_adrv9001_tx #(
     .up_rack (up_rack_s[4]));
 
   assign dac_single_lane = dac_num_lanes[0];
+
+end
+endgenerate
 
 endmodule
 

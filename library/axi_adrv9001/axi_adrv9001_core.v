@@ -38,8 +38,13 @@
 module axi_ad9001_core #(
   parameter ID = 0,
   parameter CMOS_LVDS_N = 0,
+  parameter USE_RX_CLK_FOR_TX = 0,
   parameter NUM_LANES = 3,
   parameter DRP_WIDTH = 5,
+  parameter TDD_DISABLE = 0,
+  parameter DDS_DISABLE = 0,
+  parameter INDEPENDENT_1R1T_SUPPORT = 1,
+  parameter COMMON_2R2T_SUPPORT = 1,
   parameter FPGA_TECHNOLOGY = 0,
   parameter FPGA_FAMILY = 0,
   parameter SPEED_GRADE = 0,
@@ -58,6 +63,8 @@ module axi_ad9001_core #(
 
   output                  rx1_single_lane,
   output                  rx1_sdr_ddr_n,
+  output                  rx1_symb_op,
+  output                  rx1_symb_8_16b,
 
   input                   rx2_clk,
   output                  rx2_rst,
@@ -67,6 +74,8 @@ module axi_ad9001_core #(
 
   output                  rx2_single_lane,
   output                  rx2_sdr_ddr_n,
+  output                  rx2_symb_op,
+  output                  rx2_symb_8_16b,
 
   // DAC interface
   input                   tx1_clk,
@@ -77,7 +86,9 @@ module axi_ad9001_core #(
 
   output                  tx1_single_lane,
   output                  tx1_sdr_ddr_n,
-
+  output                  tx1_symb_op,
+  output                  tx1_symb_8_16b,
+  
   input                   tx2_clk,
   output                  tx2_rst,
   output                  tx2_data_valid,
@@ -86,6 +97,11 @@ module axi_ad9001_core #(
 
   output                  tx2_single_lane,
   output                  tx2_sdr_ddr_n,
+  output                  tx2_symb_op,
+  output                  tx2_symb_8_16b,
+ 
+  input       [ 31:0]     adc_clk_ratio,
+  input       [ 31:0]     dac_clk_ratio,
 
   // DMA interface
   output                  adc_1_valid,
@@ -140,6 +156,17 @@ module axi_ad9001_core #(
   output  [DRP_WIDTH*NUM_LANES-1:0] up_rx2_dwdata,
   input   [DRP_WIDTH*NUM_LANES-1:0] up_rx2_drdata,
 
+  // TDD interface
+  input                   tdd_sync,
+  output                  tdd_sync_cntr,
+
+  output                  tdd_rx1_rf_en,
+  output                  tdd_tx1_rf_en,
+  output                  tdd_if1_mode,
+  output                  tdd_rx2_rf_en,
+  output                  tdd_tx2_rf_en,
+  output                  tdd_if2_mode,
+
   // processor interface
 
   input                   up_rstn,
@@ -154,9 +181,9 @@ module axi_ad9001_core #(
   output  reg             up_rack
 );
 
-  wire           up_wack_s[0:5];
-  wire   [31:0]  up_rdata_s[0:5];
-  wire           up_rack_s[0:5];
+  wire   [7:0]   up_wack_s;
+  wire   [31:0]  up_rdata_s[0:7];
+  wire   [7:0]   up_rack_s;
 
   wire           tx1_data_valid_A;
   wire   [15:0]  tx1_data_i_A;
@@ -167,14 +194,20 @@ module axi_ad9001_core #(
   wire           tx2_data_valid_A;
   wire   [15:0]  tx2_data_i_A;
   wire   [15:0]  tx2_data_q_A;
+  wire           up_rx1_r1_mode;
   wire           rx1_r1_mode;
   wire           rx2_rst_loc;
   wire           rx2_single_lane_loc;
   wire           rx2_sdr_ddr_n_loc;
+  wire           rx2_symb_op_loc;
+  wire           rx2_symb_8_16b_loc;
+  wire           up_tx1_r1_mode;
   wire           tx1_r1_mode;
   wire           tx2_rst_loc;
   wire           tx2_single_lane_loc;
   wire           tx2_sdr_ddr_n_loc;
+  wire           tx2_symb_op_loc;
+  wire           tx2_symb_8_16b_loc;
 
   reg            tx1_data_valid_A_d;
   reg    [15:0]  tx1_data_i_A_d;
@@ -190,14 +223,35 @@ module axi_ad9001_core #(
   // rx1_r1_mode should be 0 only when rx1_clk and rx2_clk have the same frequency
   // tx1_r1_mode should be 0 only when tx1_clk and tx2_clk have the same frequency
 
-  assign rx2_rst = rx1_r1_mode ? rx2_rst_loc : rx1_rst;
-  assign rx2_single_lane = rx1_r1_mode ? rx2_single_lane_loc : rx1_single_lane;
-  assign rx2_sdr_ddr_n = rx1_r1_mode ? rx2_sdr_ddr_n_loc : rx1_sdr_ddr_n;
+  sync_bits #(
+    .NUM_OF_BITS (6),
+    .ASYNC_CLK (1))
+  i_rx1_ctrl_sync (
+    .in_bits ({up_rx1_r1_mode,rx1_symb_op,rx1_symb_8_16b,rx1_sdr_ddr_n,rx1_single_lane,rx1_rst}),
+    .out_clk (rx2_clk),
+    .out_resetn (1'b1),
+    .out_bits ({rx1_r1_mode,rx1_symb_op_s,rx1_symb_8_16b_s,rx1_sdr_ddr_n_s,rx1_single_lane_s,rx1_rst_s}));
 
-  assign tx2_rst = tx1_r1_mode ? tx2_rst_loc : tx1_rst;
-  assign tx2_single_lane = tx1_r1_mode ? tx2_single_lane_loc : tx1_single_lane;
-  assign tx2_sdr_ddr_n = tx1_r1_mode ? tx2_sdr_ddr_n_loc : tx1_sdr_ddr_n;
+  sync_bits #(
+    .NUM_OF_BITS (6),
+    .ASYNC_CLK (1))
+  i_tx1_ctrl_sync (
+    .in_bits ({up_tx1_r1_mode,tx1_symb_op,tx1_symb_8_16b,tx1_sdr_ddr_n,tx1_single_lane,tx1_rst}),
+    .out_clk (tx2_clk),
+    .out_resetn (1'b1),
+    .out_bits ({tx1_r1_mode,tx1_symb_op_s,tx1_symb_8_16b_s,tx1_sdr_ddr_n_s,tx1_single_lane_s,tx1_rst_s}));
 
+  assign rx2_rst = rx1_r1_mode ? rx2_rst_loc : rx1_rst_s;
+  assign rx2_single_lane = rx1_r1_mode ? rx2_single_lane_loc : rx1_single_lane_s;
+  assign rx2_sdr_ddr_n = rx1_r1_mode ? rx2_sdr_ddr_n_loc : rx1_sdr_ddr_n_s;
+  assign rx2_symb_op = rx1_r1_mode ? rx2_symb_op_loc : rx1_symb_op_s;
+  assign rx2_symb_8_16b = rx1_r1_mode ? rx2_symb_8_16b_loc : rx1_symb_8_16b_s;
+
+  assign tx2_rst = tx1_r1_mode ? tx2_rst_loc : tx1_rst_s;
+  assign tx2_single_lane = tx1_r1_mode ? tx2_single_lane_loc : tx1_single_lane_s;
+  assign tx2_sdr_ddr_n = tx1_r1_mode ? tx2_sdr_ddr_n_loc : tx1_sdr_ddr_n_s;
+  assign tx2_symb_op = tx1_r1_mode ? tx2_symb_op_loc : tx1_symb_op_s;
+  assign tx2_symb_8_16b = tx1_r1_mode ? tx2_symb_8_16b_loc : tx1_symb_8_16b_s;
   assign tx1_data_valid = tx1_data_valid_A_d;
   assign tx1_data_i = tx1_data_i_A_d;
   assign tx1_data_q = tx1_data_q_A_d;
@@ -235,18 +289,26 @@ module axi_ad9001_core #(
       up_rack <= 'd0;
       up_wack <= 'd0;
     end else begin
-      up_rdata <= up_rdata_s[0] | up_rdata_s[1] | up_rdata_s[2] | up_rdata_s[3] | up_rdata_s[4] | up_rdata_s[5];
-      up_rack  <= up_rack_s[0]  | up_rack_s[1]  | up_rack_s[2]  | up_rack_s[3]  | up_rack_s[4]  | up_rack_s[5];
-      up_wack  <= up_wack_s[0]  | up_wack_s[1]  | up_wack_s[2]  | up_wack_s[3]  | up_wack_s[4]  | up_wack_s[5];
+      up_rdata <= up_rdata_s[0] |
+                  up_rdata_s[1] |
+                  up_rdata_s[2] |
+                  up_rdata_s[3] |
+                  up_rdata_s[4] |
+                  up_rdata_s[5] |
+                  up_rdata_s[6] |
+                  up_rdata_s[7];
+      up_rack  <= |up_rack_s;
+      up_wack  <= |up_wack_s;
     end
   end
 
   axi_adrv9001_rx #(
     .ID (ID),
+    .ENABLED (1),
     .CMOS_LVDS_N (CMOS_LVDS_N),
     .COMMON_BASE_ADDR(6'h00),
     .CHANNEL_BASE_ADDR(6'h01),
-    .MODE_R1 (0),
+    .MODE_R1 (COMMON_2R2T_SUPPORT==0),
     .FPGA_TECHNOLOGY (FPGA_TECHNOLOGY),
     .FPGA_FAMILY (FPGA_FAMILY),
     .SPEED_GRADE (SPEED_GRADE),
@@ -257,17 +319,21 @@ module axi_ad9001_core #(
   i_rx1 (
     .adc_rst (rx1_rst),
     .adc_clk (rx1_clk),
-    .adc_valid_A (rx1_data_valid),
+    .adc_valid_A (rx1_data_valid & tdd_rx1_valid),
     .adc_data_i_A (rx1_data_i),
     .adc_data_q_A (rx1_data_q),
 
-    .adc_valid_B (rx2_data_valid),
+    .adc_valid_B (rx2_data_valid & tdd_rx1_valid),
     .adc_data_i_B (rx2_data_i),
     .adc_data_q_B (rx2_data_q),
 
     .adc_single_lane (rx1_single_lane),
     .adc_sdr_ddr_n (rx1_sdr_ddr_n),
-    .adc_r1_mode (rx1_r1_mode),
+    .adc_symb_op (rx1_symb_op),
+    .adc_symb_8_16b (rx1_symb_8_16b),
+    .up_adc_r1_mode (up_rx1_r1_mode),
+
+    .adc_clk_ratio (adc_clk_ratio),
 
     .dac_data_valid_A (tx1_data_valid_A),
     .dac_data_i_A (tx1_data_i_A),
@@ -302,6 +368,7 @@ module axi_ad9001_core #(
 
   axi_adrv9001_rx #(
     .ID (ID),
+    .ENABLED (INDEPENDENT_1R1T_SUPPORT),
     .CMOS_LVDS_N (CMOS_LVDS_N),
     .COMMON_BASE_ADDR(6'h04),
     .CHANNEL_BASE_ADDR(6'h05),
@@ -316,7 +383,7 @@ module axi_ad9001_core #(
   i_rx2 (
     .adc_rst (rx2_rst_loc),
     .adc_clk (rx2_clk),
-    .adc_valid_A (rx2_data_valid),
+    .adc_valid_A (rx2_data_valid & tdd_rx2_valid),
     .adc_data_i_A (rx2_data_i),
     .adc_data_q_A (rx2_data_q),
 
@@ -326,6 +393,10 @@ module axi_ad9001_core #(
 
     .adc_single_lane (rx2_single_lane_loc),
     .adc_sdr_ddr_n (rx2_sdr_ddr_n_loc),
+    .adc_symb_op (rx2_symb_op_loc),
+    .adc_symb_8_16b (rx2_symb_8_16b_loc),
+
+    .adc_clk_ratio (adc_clk_ratio),
 
     .dac_data_valid_A (tx2_data_valid_A),
     .dac_data_i_A (tx2_data_i_A),
@@ -355,15 +426,17 @@ module axi_ad9001_core #(
 
   axi_adrv9001_tx #(
     .ID (ID),
+    .ENABLED (1),
     .CMOS_LVDS_N (CMOS_LVDS_N),
+    .USE_RX_CLK_FOR_TX (USE_RX_CLK_FOR_TX),
     .COMMON_BASE_ADDR ('h08),
     .CHANNEL_BASE_ADDR ('h09),
-    .MODE_R1 (0),
+    .MODE_R1 (COMMON_2R2T_SUPPORT==0),
     .FPGA_TECHNOLOGY (FPGA_TECHNOLOGY),
     .FPGA_FAMILY (FPGA_FAMILY),
     .SPEED_GRADE (SPEED_GRADE),
     .DEV_PACKAGE (DEV_PACKAGE),
-    .DDS_DISABLE (0),
+    .DDS_DISABLE (DDS_DISABLE),
     .IQCORRECTION_DISABLE (1),
     .DAC_DDS_TYPE (DAC_DDS_TYPE),
     .DAC_DDS_CORDIC_DW (DAC_DDS_CORDIC_DW),
@@ -379,7 +452,11 @@ module axi_ad9001_core #(
     .dac_data_q_B (tx1_data_q_B),
     .dac_single_lane (tx1_single_lane),
     .dac_sdr_ddr_n (tx1_sdr_ddr_n),
-    .dac_r1_mode (tx1_r1_mode),
+    .dac_symb_op (tx1_symb_op),
+    .dac_symb_8_16b (tx1_symb_8_16b),
+    .up_dac_r1_mode (up_tx1_r1_mode),
+    .tdd_tx_valid (tdd_tx1_valid),
+    .dac_clk_ratio (dac_clk_ratio),
     .dac_sync_in (1'b0),
     .dac_sync_out (),
     .dac_enable_i0 (dac_1_enable_i0),
@@ -405,7 +482,9 @@ module axi_ad9001_core #(
 
   axi_adrv9001_tx #(
     .ID (ID),
+    .ENABLED (INDEPENDENT_1R1T_SUPPORT),
     .CMOS_LVDS_N (CMOS_LVDS_N),
+    .USE_RX_CLK_FOR_TX (USE_RX_CLK_FOR_TX),
     .COMMON_BASE_ADDR ('h10),
     .CHANNEL_BASE_ADDR ('h11),
     .MODE_R1 (1),
@@ -413,7 +492,7 @@ module axi_ad9001_core #(
     .FPGA_FAMILY (FPGA_FAMILY),
     .SPEED_GRADE (SPEED_GRADE),
     .DEV_PACKAGE (DEV_PACKAGE),
-    .DDS_DISABLE (0),
+    .DDS_DISABLE (DDS_DISABLE),
     .IQCORRECTION_DISABLE (1),
     .DAC_DDS_TYPE (DAC_DDS_TYPE),
     .DAC_DDS_CORDIC_DW (DAC_DDS_CORDIC_DW),
@@ -429,6 +508,8 @@ module axi_ad9001_core #(
     .dac_data_q_B (),
     .dac_single_lane (tx2_single_lane_loc),
     .dac_sdr_ddr_n (tx2_sdr_ddr_n_loc),
+    .dac_symb_op (tx2_symb_op_loc),
+    .dac_symb_8_16b (tx2_symb_8_16b_loc),
     .dac_sync_in (1'b0),
     .dac_sync_out (),
     .dac_valid (dac_2_valid),
@@ -441,6 +522,8 @@ module axi_ad9001_core #(
     .dac_enable_q1 (),
     .dac_data_q1 (16'b0),
     .dac_dunf (dac_2_dunf),
+    .tdd_tx_valid (tdd_tx2_valid),
+    .dac_clk_ratio (dac_clk_ratio),
     .up_rstn (up_rstn),
     .up_clk (up_clk),
     .up_wreq (up_wreq),
@@ -496,6 +579,91 @@ module axi_ad9001_core #(
     .up_raddr (up_raddr),
     .up_rdata (up_rdata_s[5]),
     .up_rack (up_rack_s[5]));
+
+  generate
+  if (TDD_DISABLE == 0) begin
+
+  wire tdd_rx2_rf_en_loc;
+  wire tdd_tx2_rf_en_loc;
+  wire tdd_if2_mode_loc;
+
+  axi_adrv9001_tdd #(
+    .BASE_ADDRESS (6'h12)
+  ) i_tdd_1 (
+    .clk (rx1_clk),
+    .rst (rx1_rst),
+    .tdd_rx_vco_en (),
+    .tdd_tx_vco_en (),
+    .tdd_rx_rf_en (tdd_rx1_rf_en),
+    .tdd_tx_rf_en (tdd_tx1_rf_en),
+    .tdd_enabled (tdd_if1_mode),
+    .tdd_status (8'h0),
+    .tdd_sync (tdd_sync),
+    .tdd_sync_cntr (tdd_sync_cntr1),
+    .tdd_tx_valid (tdd_tx1_valid),
+    .tdd_rx_valid (tdd_rx1_valid),
+    .up_rstn (up_rstn),
+    .up_clk (up_clk),
+    .up_wreq (up_wreq),
+    .up_waddr (up_waddr),
+    .up_wdata (up_wdata),
+    .up_wack (up_wack_s[6]),
+    .up_rreq (up_rreq),
+    .up_raddr (up_raddr),
+    .up_rdata (up_rdata_s[6]),
+    .up_rack (up_rack_s[6]));
+
+  axi_adrv9001_tdd #(
+    .BASE_ADDRESS (6'h13)
+  ) i_tdd_2 (
+    .clk (rx2_clk),
+    .rst (rx2_rst_loc),
+    .tdd_rx_vco_en (),
+    .tdd_tx_vco_en (),
+    .tdd_rx_rf_en (tdd_rx2_rf_en_loc),
+    .tdd_tx_rf_en (tdd_tx2_rf_en_loc),
+    .tdd_enabled (tdd_if2_mode_loc),
+    .tdd_status (8'h0),
+    .tdd_sync (tdd_sync),
+    .tdd_sync_cntr (tdd_sync_cntr2),
+    .tdd_tx_valid (tdd_tx2_valid),
+    .tdd_rx_valid (tdd_rx2_valid),
+    .up_rstn (up_rstn),
+    .up_clk (up_clk),
+    .up_wreq (up_wreq),
+    .up_waddr (up_waddr),
+    .up_wdata (up_wdata),
+    .up_wack (up_wack_s[7]),
+    .up_rreq (up_rreq),
+    .up_raddr (up_raddr),
+    .up_rdata (up_rdata_s[7]),
+    .up_rack (up_rack_s[7]));
+
+  assign tdd_rx2_rf_en = rx1_r1_mode ? tdd_rx2_rf_en_loc : tdd_rx1_rf_en;
+  assign tdd_tx2_rf_en = tx1_r1_mode ? tdd_tx2_rf_en_loc : tdd_tx1_rf_en;
+  assign tdd_if2_mode = tx1_r1_mode||rx1_r1_mode ? tdd_if2_mode_loc : tdd_if1_mode;
+
+  assign tdd_sync_cntr = tdd_sync_cntr1 | tdd_sync_cntr2;
+
+  end else begin
+    assign up_wack_s[6] = 1'b0;
+    assign up_rack_s[6] = 1'b0;
+    assign up_rdata_s[6] = 32'h0;
+    assign up_wack_s[7] = 1'b0;
+    assign up_rack_s[7] = 1'b0;
+    assign up_rdata_s[7] = 32'h0;
+    assign tdd_rx1_rf_en = 1'b1;
+    assign tdd_tx1_rf_en = 1'b1;
+    assign tdd_if1_mode = 1'b0;
+    assign tdd_tx1_valid = 1'b1;
+    assign tdd_rx1_valid = 1'b1;
+    assign tdd_rx2_rf_en = 1'b1;
+    assign tdd_tx2_rf_en = 1'b1;
+    assign tdd_if2_mode = 1'b0;
+    assign tdd_tx2_valid = 1'b1;
+    assign tdd_rx2_valid = 1'b1;
+  end
+  endgenerate
 
 endmodule
 

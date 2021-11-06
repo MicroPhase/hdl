@@ -19,6 +19,26 @@ adi_ip_infer_mm_interfaces axi_adxcvr
 adi_init_bd_tcl
 adi_ip_bd axi_adxcvr "bd/bd.tcl"
 
+set_property company_url {https://wiki.analog.com/resources/fpga/docs/axi_adxcvr} [ipx::current_core]
+
+set cc [ipx::current_core]
+
+# Arrange GUI page layout
+set page0 [ipgui::get_pagespec -name "Page 0" -component $cc]
+# Link layer mode
+set p [ipgui::get_guiparamspec -name "LINK_MODE" -component $cc]
+ipgui::move_param -component $cc -order 0 $p -parent $page0
+set_property -dict [list \
+ "display_name" "Link Layer mode" \
+ "tooltip" "Link Layer mode" \
+ "widget" "comboBox" \
+] $p
+
+set_property -dict [list \
+  value_validation_type pairs \
+  value_validation_pairs {64B66B 2 8B10B 1} \
+] [ipx::get_user_parameters $p -of_objects $cc]
+
 set_property driver_value 0 [ipx::get_ports -filter "direction==in" -of_objects [ipx::current_core]]
 
 set_property master_address_space_ref m_axi \
@@ -51,6 +71,13 @@ for {set n 0} {$n < 16} {incr n} {
     "rst                 up_ch_rst_${n}         "\
     "user_ready          up_ch_user_ready_${n}  "\
     "rst_done            up_ch_rst_done_${n}    "\
+    "prbsforceerr        up_ch_prbsforceerr_${n}"\
+    "prbssel             up_ch_prbssel_${n}     "\
+    "prbscntreset        up_ch_prbscntreset_${n}"\
+    "prbserr             up_ch_prbserr_${n}     "\
+    "prbslocked          up_ch_prbslocked_${n}  "\
+    "bufstatus           up_ch_bufstatus_${n}   "\
+    "bufstatus_rst       up_ch_bufstatus_rst_${n}"\
     "lpm_dfe_n           up_ch_lpm_dfe_n_${n}   "\
     "rate                up_ch_rate_${n}        "\
     "sys_clk_sel         up_ch_sys_clk_sel_${n} "\
@@ -67,8 +94,14 @@ for {set n 0} {$n < 16} {incr n} {
 
 }
 
+ipx::infer_bus_interface up_pll_rst xilinx.com:signal:reset_rtl:1.0 [ipx::current_core]
+ipx::add_bus_parameter POLARITY [ipx::get_bus_interfaces up_pll_rst -of_objects [ipx::current_core]]
+set_property VALUE ACTIVE_HIGH [ipx::get_bus_parameters POLARITY -of [ipx::get_bus_interfaces up_pll_rst]]
+
 ipx::infer_bus_interface s_axi_aclk xilinx.com:signal:clock_rtl:1.0 [ipx::current_core]
 ipx::infer_bus_interface s_axi_aresetn xilinx.com:signal:reset_rtl:1.0 [ipx::current_core]
+
+ipx::associate_bus_interfaces -clock s_axi_aclk -reset up_pll_rst -remove [ipx::current_core]
 
 set_property value s_axi:m_axi [ipx::get_bus_parameters ASSOCIATED_BUSIF \
   -of_objects [ipx::get_bus_interfaces s_axi_aclk -of_objects [ipx::current_core]]]

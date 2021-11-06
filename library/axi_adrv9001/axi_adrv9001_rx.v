@@ -37,6 +37,7 @@
 
 module axi_adrv9001_rx #(
   parameter   ID = 0,
+  parameter   ENABLED = 1,
   parameter   CMOS_LVDS_N = 0,
   parameter   COMMON_BASE_ADDR = 'h00,
   parameter   CHANNEL_BASE_ADDR = 'h01,
@@ -62,7 +63,11 @@ module axi_adrv9001_rx #(
 
   output                  adc_single_lane,
   output                  adc_sdr_ddr_n,
-  output                  adc_r1_mode,
+  output                  adc_symb_op,
+  output                  adc_symb_8_16b,
+  output                  up_adc_r1_mode,
+
+  input       [ 31:0]     adc_clk_ratio,
 
   // dac loopback interface
   input                   dac_data_valid_A,
@@ -101,6 +106,33 @@ module axi_adrv9001_rx #(
   output  reg             up_rack
 );
 
+generate
+if (ENABLED == 0) begin : core_disabled
+
+  assign adc_rst = 1'b0;
+  assign adc_single_lane = 1'b0;
+  assign adc_sdr_ddr_n = 1'b0;
+  assign adc_symb_op = 1'b0;
+  assign adc_symb_8_16b = 1'b0;
+  assign up_adc_r1_mode = 1'b0;
+  assign adc_valid = 1'b0;
+  assign adc_enable_i0 = 1'b0;
+  assign adc_data_i0 = 16'b0;
+  assign adc_enable_q0 = 1'b0;
+  assign adc_data_q0 = 16'b0;
+  assign adc_enable_i1 = 1'b0;
+  assign adc_data_i1 = 16'b0;
+  assign adc_enable_q1 = 1'b0;
+  assign adc_data_q1 = 16'b0;
+
+  always @(*) begin
+    up_wack = 1'b0;
+    up_rdata = 32'b0;
+    up_rack = 1'b0;
+  end
+
+end else begin : core_enabled
+
   // configuration settings
 
   localparam  CONFIG =  (CMOS_LVDS_N * 128) +
@@ -128,7 +160,6 @@ module axi_adrv9001_rx #(
   wire    [  4:0]   up_wack_s;
   wire    [  4:0]   up_rack_s;
   wire    [ 31:0]   up_rdata_s[0:4];
-  wire              up_adc_r1_mode;
   wire              adc_valid_out_i0;
   wire              adc_valid_out_i1;
 
@@ -322,18 +353,20 @@ module axi_adrv9001_rx #(
     .mmcm_rst (),
     .adc_clk (adc_clk),
     .adc_rst (adc_rst),
-    .adc_r1_mode (adc_r1_mode),
+    .adc_r1_mode (),
     .adc_ddr_edgesel (),
     .adc_pin_mode (),
     .adc_status (1'b1),
     .adc_sync_status (1'd0),
     .adc_status_ovf (adc_dovf),
-    .adc_clk_ratio (32'd1),
+    .adc_clk_ratio (adc_clk_ratio),
     .adc_start_code (),
     .adc_sref_sync (),
     .adc_sync (),
     .adc_num_lanes (adc_num_lanes),
     .adc_sdr_ddr_n (adc_sdr_ddr_n),
+    .adc_symb_op (adc_symb_op),
+    .adc_symb_8_16b (adc_symb_8_16b),
     .up_pps_rcounter(32'h0),
     .up_pps_status(1'b0),
     .up_pps_irq_mask(),
@@ -365,6 +398,9 @@ module axi_adrv9001_rx #(
     .up_rack (up_rack_s[4]));
 
   assign adc_single_lane = adc_num_lanes[0];
+
+end
+endgenerate
 
 endmodule
 

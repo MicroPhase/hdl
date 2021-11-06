@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -7,6 +8,7 @@ PROJECT_NAME := fmcadc5_vc707
 
 M_DEPS += ../common/fmcadc5_spi.v
 M_DEPS += ../common/fmcadc5_bd.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/xilinx/adcfifo_bd.tcl
 M_DEPS += ../../common/vc707/vc707_system_mig.prj
 M_DEPS += ../../common/vc707/vc707_system_constr.xdc

@@ -1,11 +1,13 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
 PROJECT_NAME := cn0540_coraz7s
 
 M_DEPS += ../common/cn0540_bd.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/coraz7s/coraz7s_system_ps7.tcl
 M_DEPS += ../../common/coraz7s/coraz7s_system_constr.xdc
 M_DEPS += ../../common/coraz7s/coraz7s_system_bd.tcl

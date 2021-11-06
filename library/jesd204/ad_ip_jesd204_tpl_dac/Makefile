@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -12,6 +13,8 @@ GENERIC_DEPS += ../../common/ad_dds_cordic_pipe.v
 GENERIC_DEPS += ../../common/ad_dds_sine.v
 GENERIC_DEPS += ../../common/ad_dds_sine_cordic.v
 GENERIC_DEPS += ../../common/ad_iqcor.v
+GENERIC_DEPS += ../../common/ad_mux.v
+GENERIC_DEPS += ../../common/ad_mux_core.v
 GENERIC_DEPS += ../../common/ad_perfect_shuffle.v
 GENERIC_DEPS += ../../common/ad_rst.v
 GENERIC_DEPS += ../../common/up_axi.v

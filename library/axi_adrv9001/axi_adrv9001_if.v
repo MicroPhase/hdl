@@ -108,6 +108,9 @@ module axi_adrv9001_if #(
 
   // upper layer data interface
 
+  output [ 31:0]    adc_clk_ratio,
+  output [ 31:0]    dac_clk_ratio,
+
   output            rx1_clk,
   input             rx1_rst,
   output            rx1_data_valid,
@@ -116,6 +119,8 @@ module axi_adrv9001_if #(
 
   input             rx1_single_lane,
   input             rx1_sdr_ddr_n,
+  input             rx1_symb_op,
+  input             rx1_symb_8_16b,
 
   output            rx2_clk,
   input             rx2_rst,
@@ -125,6 +130,8 @@ module axi_adrv9001_if #(
 
   input             rx2_single_lane,
   input             rx2_sdr_ddr_n,
+  input             rx2_symb_op,
+  input             rx2_symb_8_16b,
 
   output            tx1_clk,
   input             tx1_rst,
@@ -134,6 +141,8 @@ module axi_adrv9001_if #(
 
   input             tx1_single_lane,
   input             tx1_sdr_ddr_n,
+  input             tx1_symb_op,
+  input             tx1_symb_8_16b,
 
   output            tx2_clk,
   input             tx2_rst,
@@ -142,7 +151,9 @@ module axi_adrv9001_if #(
   input     [15:0]  tx2_data_q,
 
   input             tx2_single_lane,
-  input             tx2_sdr_ddr_n
+  input             tx2_sdr_ddr_n,
+  input             tx2_symb_op,
+  input             tx2_symb_8_16b
 );
 
   // Tx has an extra lane to drive the clock
@@ -215,6 +226,8 @@ module axi_adrv9001_if #(
     .adc_data_strobe (adc_1_data_strobe),
     .adc_valid (adc_1_valid),
 
+    .adc_clk_ratio (adc_clk_ratio),
+
     .up_clk (up_clk),
     .up_adc_dld (up_rx1_dld),
     .up_adc_dwdata (up_rx1_dwdata),
@@ -232,6 +245,7 @@ module axi_adrv9001_if #(
   adrv9001_rx_link #(
     .CMOS_LVDS_N (CMOS_LVDS_N)
   ) i_rx_1_link (
+    .adc_rst (rx1_rst),
     .adc_clk_div (adc_1_clk_div),
     .adc_data_0 (adc_1_data_0),
     .adc_data_1 (adc_1_data_1),
@@ -245,7 +259,9 @@ module axi_adrv9001_if #(
     .rx_data_i (rx1_data_i),
     .rx_data_q (rx1_data_q),
     .rx_single_lane (rx1_single_lane),
-    .rx_sdr_ddr_n (rx1_sdr_ddr_n)
+    .rx_sdr_ddr_n (rx1_sdr_ddr_n),
+    .rx_symb_op (rx1_symb_op),
+    .rx_symb_8_16b (rx1_symb_8_16b)
   );
 
   adrv9001_rx
@@ -292,6 +308,7 @@ module axi_adrv9001_if #(
   adrv9001_rx_link #(
     .CMOS_LVDS_N (CMOS_LVDS_N)
   ) i_rx_2_link (
+    .adc_rst (rx2_rst),
     .adc_clk_div (adc_2_clk_div),
     .adc_data_0 (adc_2_data_0),
     .adc_data_1 (adc_2_data_1),
@@ -305,7 +322,9 @@ module axi_adrv9001_if #(
     .rx_data_i (rx2_data_i),
     .rx_data_q (rx2_data_q),
     .rx_single_lane (rx2_single_lane),
-    .rx_sdr_ddr_n (rx2_sdr_ddr_n)
+    .rx_sdr_ddr_n (rx2_sdr_ddr_n),
+    .rx_symb_op (rx2_symb_op),
+    .rx_symb_8_16b (rx2_symb_8_16b)
   );
 
   adrv9001_tx #(
@@ -346,6 +365,8 @@ module axi_adrv9001_if #(
    .dac_data_clk (dac_1_data_clk),
    .dac_data_valid (dac_1_data_valid),
 
+   .dac_clk_ratio (dac_clk_ratio),
+
    .mssi_sync (mssi_sync)
   );
 
@@ -368,7 +389,9 @@ module axi_adrv9001_if #(
     .tx_data_i (tx1_data_i),
     .tx_data_q (tx1_data_q),
     .tx_sdr_ddr_n (tx1_sdr_ddr_n),
-    .tx_single_lane (tx1_single_lane)
+    .tx_single_lane (tx1_single_lane),
+    .tx_symb_op (tx1_symb_op),
+    .tx_symb_8_16b (tx1_symb_8_16b)
   );
 
  adrv9001_tx #(
@@ -431,7 +454,9 @@ module axi_adrv9001_if #(
     .tx_data_i (tx2_data_i),
     .tx_data_q (tx2_data_q),
     .tx_sdr_ddr_n (tx2_sdr_ddr_n),
-    .tx_single_lane (tx2_single_lane)
+    .tx_single_lane (tx2_single_lane),
+    .tx_symb_op (tx2_symb_op),
+    .tx_symb_8_16b (tx2_symb_8_16b)
   );
 
 endmodule

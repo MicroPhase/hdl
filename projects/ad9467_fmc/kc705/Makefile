@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -7,6 +8,7 @@ PROJECT_NAME := ad9467_fmc_kc705
 
 M_DEPS += ../common/ad9467_spi.v
 M_DEPS += ../common/ad9467_bd.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/kc705/kc705_system_mig.prj
 M_DEPS += ../../common/kc705/kc705_system_constr.xdc
 M_DEPS += ../../common/kc705/kc705_system_bd.tcl

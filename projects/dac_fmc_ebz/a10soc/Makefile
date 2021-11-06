@@ -1,5 +1,6 @@
 ####################################################################################
-## Copyright 2018(c) Analog Devices, Inc.
+## Copyright (c) 2018 - 2021 Analog Devices, Inc.
+### SPDX short identifier: BSD-1-Clause
 ## Auto-generated, do not modify!
 ####################################################################################
 
@@ -7,7 +8,7 @@ PROJECT_NAME := dac_fmc_ebz_a10soc
 
 M_DEPS += ../common/dac_fmc_ebz_qsys.tcl
 M_DEPS += ../common/config.tcl
-M_DEPS += ../../scripts/adi_pd_intel.tcl
+M_DEPS += ../../scripts/adi_pd.tcl
 M_DEPS += ../../common/a10soc/a10soc_system_qsys.tcl
 M_DEPS += ../../common/a10soc/a10soc_system_assign.tcl
 M_DEPS += ../../common/a10soc/a10soc_plddr4_dacfifo_qsys.tcl
