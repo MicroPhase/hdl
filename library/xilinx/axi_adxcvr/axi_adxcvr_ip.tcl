@@ -19,6 +19,8 @@ adi_ip_infer_mm_interfaces axi_adxcvr
 adi_init_bd_tcl
 adi_ip_bd axi_adxcvr "bd/bd.tcl"
 
+set_property company_url {https://wiki.analog.com/resources/fpga/docs/axi_adxcvr} [ipx::current_core]
+
 set cc [ipx::current_core]
 
 # Arrange GUI page layout
@@ -74,6 +76,8 @@ for {set n 0} {$n < 16} {incr n} {
     "prbscntreset        up_ch_prbscntreset_${n}"\
     "prbserr             up_ch_prbserr_${n}     "\
     "prbslocked          up_ch_prbslocked_${n}  "\
+    "bufstatus           up_ch_bufstatus_${n}   "\
+    "bufstatus_rst       up_ch_bufstatus_rst_${n}"\
     "lpm_dfe_n           up_ch_lpm_dfe_n_${n}   "\
     "rate                up_ch_rate_${n}        "\
     "sys_clk_sel         up_ch_sys_clk_sel_${n} "\
@@ -96,6 +100,8 @@ set_property VALUE ACTIVE_HIGH [ipx::get_bus_parameters POLARITY -of [ipx::get_b
 
 ipx::infer_bus_interface s_axi_aclk xilinx.com:signal:clock_rtl:1.0 [ipx::current_core]
 ipx::infer_bus_interface s_axi_aresetn xilinx.com:signal:reset_rtl:1.0 [ipx::current_core]
+
+ipx::associate_bus_interfaces -clock s_axi_aclk -reset up_pll_rst -remove [ipx::current_core]
 
 set_property value s_axi:m_axi [ipx::get_bus_parameters ASSOCIATED_BUSIF \
   -of_objects [ipx::get_bus_interfaces s_axi_aclk -of_objects [ipx::current_core]]]

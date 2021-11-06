@@ -17,6 +17,8 @@ adi_ip_properties_lite util_adxcvr
 
 adi_ip_bd util_adxcvr "bd/bd.tcl"
 
+set_property company_url {https://wiki.analog.com/resources/fpga/docs/util_xcvr} [ipx::current_core]
+
 adi_ip_add_core_dependencies { \
 	analog.com:user:util_cdc:1.0 \
 }
@@ -227,6 +229,14 @@ ipx::infer_bus_interface up_qpll_rst_4 xilinx.com:signal:reset_rtl:1.0 [ipx::cur
 ipx::infer_bus_interface up_qpll_rst_8 xilinx.com:signal:reset_rtl:1.0 [ipx::current_core]
 ipx::infer_bus_interface up_qpll_rst_12 xilinx.com:signal:reset_rtl:1.0 [ipx::current_core]
 
+for {set n 0} {$n < 16} {incr n} {
+
+  if {($n%4) == 0} {
+	ipx::associate_bus_interfaces -clock cpll_ref_clk_${n} -reset up_qpll_rst_${n} -remove [ipx::current_core]
+  }
+  ipx::associate_bus_interfaces -clock cpll_ref_clk_${n} -reset up_cpll_rst_${n} -remove [ipx::current_core]
+}
+
 set_property driver_value 0 [ipx::get_ports -filter "direction==in" -of_objects [ipx::current_core]]
 
 for {set n 0} {$n < 16} {incr n} {
@@ -259,6 +269,8 @@ for {set n 0} {$n < 16} {incr n} {
     "prbscntreset        up_rx_prbscntreset_${n}"\
     "prbserr             up_rx_prbserr_${n}     "\
     "prbslocked          up_rx_prbslocked_${n}  "\
+    "bufstatus           up_rx_bufstatus_${n}   "\
+    "bufstatus_rst       up_rx_bufstatus_rst_${n}"\
     "lpm_dfe_n           up_rx_lpm_dfe_n_${n}   "\
     "rate                up_rx_rate_${n}        "\
     "sys_clk_sel         up_rx_sys_clk_sel_${n} "\
@@ -277,6 +289,7 @@ for {set n 0} {$n < 16} {incr n} {
     "rst_done            up_tx_rst_done_${n}    "\
     "prbsforceerr        up_tx_prbsforceerr_${n}"\
     "prbssel             up_tx_prbssel_${n}     "\
+    "bufstatus           up_tx_bufstatus_${n}   "\
     "lpm_dfe_n           up_tx_lpm_dfe_n_${n}   "\
     "rate                up_tx_rate_${n}        "\
     "sys_clk_sel         up_tx_sys_clk_sel_${n} "\

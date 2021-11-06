@@ -61,6 +61,8 @@ adi_ip_properties ad_ip_jesd204_tpl_dac
 adi_init_bd_tcl
 adi_ip_bd ad_ip_jesd204_tpl_dac "bd/bd.tcl"
 
+set_property company_url {https://wiki.analog.com/resources/fpga/peripherals/jesd204/jesd204_tpl_dac} [ipx::current_core]
+
 set cc [ipx::current_core]
 
 set_property display_name "JESD204 Transport Layer for DACs" $cc
@@ -94,7 +96,7 @@ foreach p {DDS_CORDIC_DW DDS_CORDIC_PHASE_DW} {
 }
 
 foreach {p v} {
-  "NUM_LANES" "1 2 3 4 8 16" \
+  "NUM_LANES" "1 2 3 4 6 8 12 16" \
   "NUM_CHANNELS" "1 2 4 6 8 16 32 64" \
   "BITS_PER_SAMPLE" "8 12 16" \
   "DMA_BITS_PER_SAMPLE" "8 12 16" \

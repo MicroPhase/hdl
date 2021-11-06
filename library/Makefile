@@ -13,6 +13,7 @@ all: lib
 
 
 clean:
+	$(MAKE) -C ad463x_data_capture clean
 	$(MAKE) -C axi_ad5766 clean
 	$(MAKE) -C axi_ad6676 clean
 	$(MAKE) -C axi_ad7616 clean
@@ -53,6 +54,7 @@ clean:
 	$(MAKE) -C axi_mc_current_monitor clean
 	$(MAKE) -C axi_mc_speed clean
 	$(MAKE) -C axi_pulse_gen clean
+	$(MAKE) -C axi_pwm_gen clean
 	$(MAKE) -C axi_rd_wr_combiner clean
 	$(MAKE) -C axi_spdif_rx clean
 	$(MAKE) -C axi_spdif_tx clean
@@ -86,13 +88,17 @@ clean:
 	$(MAKE) -C jesd204/jesd204_soft_pcs_tx clean
 	$(MAKE) -C jesd204/jesd204_tx clean
 	$(MAKE) -C jesd204/jesd204_tx_static_config clean
+	$(MAKE) -C jesd204/jesd204_versal_gt_adapter_rx clean
+	$(MAKE) -C jesd204/jesd204_versal_gt_adapter_tx clean
 	$(MAKE) -C spi_engine/axi_spi_engine clean
+	$(MAKE) -C spi_engine/spi_axis_reorder clean
 	$(MAKE) -C spi_engine/spi_engine_execution clean
 	$(MAKE) -C spi_engine/spi_engine_interconnect clean
 	$(MAKE) -C spi_engine/spi_engine_offload clean
 	$(MAKE) -C sysid_rom clean
 	$(MAKE) -C util_adcfifo clean
 	$(MAKE) -C util_axis_fifo clean
+	$(MAKE) -C util_axis_fifo_asym clean
 	$(MAKE) -C util_axis_resize clean
 	$(MAKE) -C util_axis_upscale clean
 	$(MAKE) -C util_bsplit clean
@@ -130,6 +136,7 @@ clean-all:clean
 
 
 lib:
+	$(MAKE) -C ad463x_data_capture
 	$(MAKE) -C axi_ad5766
 	$(MAKE) -C axi_ad6676
 	$(MAKE) -C axi_ad7616
@@ -170,6 +177,7 @@ lib:
 	$(MAKE) -C axi_mc_current_monitor
 	$(MAKE) -C axi_mc_speed
 	$(MAKE) -C axi_pulse_gen
+	$(MAKE) -C axi_pwm_gen
 	$(MAKE) -C axi_rd_wr_combiner
 	$(MAKE) -C axi_spdif_rx
 	$(MAKE) -C axi_spdif_tx
@@ -203,13 +211,17 @@ lib:
 	$(MAKE) -C jesd204/jesd204_soft_pcs_tx
 	$(MAKE) -C jesd204/jesd204_tx
 	$(MAKE) -C jesd204/jesd204_tx_static_config
+	$(MAKE) -C jesd204/jesd204_versal_gt_adapter_rx
+	$(MAKE) -C jesd204/jesd204_versal_gt_adapter_tx
 	$(MAKE) -C spi_engine/axi_spi_engine
+	$(MAKE) -C spi_engine/spi_axis_reorder
 	$(MAKE) -C spi_engine/spi_engine_execution
 	$(MAKE) -C spi_engine/spi_engine_interconnect
 	$(MAKE) -C spi_engine/spi_engine_offload
 	$(MAKE) -C sysid_rom
 	$(MAKE) -C util_adcfifo
 	$(MAKE) -C util_axis_fifo
+	$(MAKE) -C util_axis_fifo_asym
 	$(MAKE) -C util_axis_resize
 	$(MAKE) -C util_axis_upscale
 	$(MAKE) -C util_bsplit
