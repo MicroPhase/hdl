@@ -73,6 +73,12 @@ set_property  -dict {PACKAGE_PIN    L16    IOSTANDARD LVCMOS18} [get_ports adrv9
 
 
 set_property  -dict {PACKAGE_PIN  L19   IOSTANDARD LVCMOS33} [get_ports CLK_MAINSEL]                   ; ##
+set_property -dict {PACKAGE_PIN E22 IOSTANDARD LVCMOS33} [get_ports pps_ext];
+set_property -dict {PACKAGE_PIN E19 IOSTANDARD LVCMOS33} [get_ports pps_int];
+
+set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports gps_uart_rxd];
+set_property -dict {PACKAGE_PIN D17 IOSTANDARD LVCMOS33} [get_ports gps_uart_txd];
+set_property -dict {PACKAGE_PIN E18 IOSTANDARD LVCMOS33} [get_ports gps_rst_n];
 
 set_property  -dict {PACKAGE_PIN  J20   IOSTANDARD LVCMOS33 PULLUP true } [get_ports spi_csn_lmk04828] ; ##
 set_property  -dict {PACKAGE_PIN  G21   IOSTANDARD LVCMOS33} [get_ports spi_lmk04828_clk]              ; ##

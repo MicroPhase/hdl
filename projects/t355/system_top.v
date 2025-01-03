@@ -67,6 +67,11 @@ module system_top (
   input  wire             spi_adrv9009_miso       ,
 
   output wire             CLK_MAINSEL             ,
+  input  wire             pps_ext                 ,
+  input  wire             pps_int                 ,
+  input  wire             gps_uart_rxd            ,
+  output wire             gps_uart_txd            ,
+  output wire             gps_rst_n               ,
 
 
   // inout                   ad9528_reset_b,
@@ -117,10 +122,13 @@ module system_top (
   wire                    bus_clk;
   wire                    clk_50m_bufg;
   wire                    pl_resetn1;
+  wire      [1:0]         ref_src_sel;
 
   assign gpio_i[94:60] = gpio_o[94:60];
   assign gpio_i[31:21] = gpio_o[31:21];
   assign status_led = gpio_o[1];
+  assign gps_rst_n = 1'b1;
+  assign ref_src_sel = gpio_o[3:2];
 
   // instantiations
 
@@ -217,7 +225,7 @@ module system_top (
   // assign gpio_i[20: 8] = gpio_bd_i;
   // assign gpio_bd_o = gpio_o[ 7: 0];
 
-  assign CLK_MAINSEL = 1'b1;
+  
 
 
   wire    [ 2:0]  spi0_csn;
@@ -249,20 +257,22 @@ module system_top (
   assign          spi0_miso = (spi0_csn == 3'd1) ? spi_lmk04828_miso_ibuf :
                               (spi0_csn == 3'd6) ? spi_adrv9009_miso_ibuf : 1'b0;
 
-  wire lmk_rst_n;
+  // ref_src_sel:
+  // 2'b00: internal 10M for driving lmk04828
+  // 2'b01: gps 10M for driving lmk04828
+  // 2'b10: external 10M reference clock for driving lmk04828
+  // 2'b11: onboard 10M OCXO for driving lmk04828
+  assign CLK_MAINSEL = (ref_src_sel==2'b11) ? 1'b1 : 1'b0; // CLK_MAINSEL
+                                                           // 0: using external reference 10M clock for driving lmk04828
+                                                           // 1: using internal 10M OCXO (not mount currently) for driving lmk04828
   lmk04828_config u_lmk04828_config(
       .clk   ( bus_clk   ),
       .rst   ( ~pl_resetn1   ),
+      .ref_src (ref_src_sel),
       .sclk  ( spi_lmk04828_clk  ),
       .mosi  ( spi_lmk04828_sdio  ),
       .sync_n  ( spi_csn_lmk04828  )
   );
-
-
-  // vio_0 u_vio_0 (
-  //   .clk(CLK_50M),                // input wire clk
-  //   .probe_out0(lmk_rst_n)  // output wire [0 : 0] probe_out0
-  // );
 
   system_wrapper i_system_wrapper (
     .pl_clk2(pl_clk2),
@@ -275,6 +285,10 @@ module system_top (
     .gpio_i (gpio_i),
     .gpio_o (gpio_o),
     .gpio_t (gpio_t),
+
+    .gps_uart_rxd (gps_uart_rxd),
+    .gps_uart_txd (gps_uart_txd),
+
     .rx_data_0_n (rx_data_n[0]),
     .rx_data_0_p (rx_data_p[0]),
     .rx_data_1_n (rx_data_n[1]),
